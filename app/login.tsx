@@ -1,20 +1,28 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { authService } from "../services/authService";
 import InputField from "./components/InputField";
 
 export default function Login() {
-  const { control, handleSubmit } = useForm({
+  const router = useRouter();
+  const { control, handleSubmit, formState: { isSubmitting } } = useForm({
     defaultValues: { email: "", password: "" }
   });
 
-  const onSubmit = (data: any) => {
-    console.log("LOGIN READY →", data);
+  const onSubmit = async (data: any) => {
+    try {
+      const response = await authService.login(data);
+      console.log("Logat cu succes:", response.username);
+      // Navigăm către ecranul principal
+      router.replace("/welcome"); 
+    } catch (error: any) {
+      Alert.alert("Eroare Login", error.toString());
+    }
   };
 
   return (
     <View className="flex-1 bg-[#1b1a17] px-6 justify-center">
-
       <Text className="text-4xl font-bold mb-10 text-center text-[#d1a075]">
         Autentificare
       </Text>
@@ -22,7 +30,7 @@ export default function Login() {
       <InputField
         control={control}
         name="email"
-        label="Email"
+        label="Email sau Username"
         placeholder="exemplu@firma.com"
       />
 
@@ -36,10 +44,11 @@ export default function Login() {
 
       <TouchableOpacity
         onPress={handleSubmit(onSubmit)}
-        className="bg-[#d1a075] py-4 rounded-xl active:scale-95 shadow-xl"
+        disabled={isSubmitting}
+        className={`py-4 rounded-xl active:scale-95 shadow-xl ${isSubmitting ? 'bg-gray-500' : 'bg-[#d1a075]'}`}
       >
         <Text className="text-center text-[#1b1a17] font-semibold text-lg">
-          Intră în cont
+          {isSubmitting ? "Se încarcă..." : "Intră în cont"}
         </Text>
       </TouchableOpacity>
 

@@ -1,26 +1,37 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { authService } from "../services/authService";
 import InputField from "./components/InputField";
 
 export default function Register() {
-  const { control, handleSubmit } = useForm({
+  const router = useRouter();
+  const { control, handleSubmit, formState: { isSubmitting } } = useForm({
     defaultValues: { username: "", email: "", password: "", confirmPassword: "" }
   });
 
-  const onSubmit = (data: any) => {
-    // Acum data va include: username, email, password și confirmPassword
-    console.log("REGISTER READY →", data);
+  const onSubmit = async (data: any) => {
+    if (data.password !== data.confirmPassword) {
+      Alert.alert("Eroare", "Parolele nu coincid!");
+      return;
+    }
+
+    try {
+      await authService.register(data);
+      Alert.alert("Succes", "Cont creat! Te poți loga.", [
+        { text: "OK", onPress: () => router.push("/login") }
+      ]);
+    } catch (error: any) {
+      Alert.alert("Eroare Register", error.toString());
+    }
   };
 
   return (
     <View className="flex-1 bg-[#1b1a17] px-6 justify-center">
-
       <Text className="text-4xl font-bold mb-10 text-center text-[#d1a075]">
         Creează cont
       </Text>
 
-      {/* NOU: Câmp Nume Utilizator */}
       <InputField
         control={control}
         name="username"
@@ -43,7 +54,6 @@ export default function Register() {
         secureTextEntry
       />
 
-      {/* NOU: Câmp Confirmare Parolă */}
       <InputField
         control={control}
         name="confirmPassword"
@@ -54,11 +64,11 @@ export default function Register() {
       
       <TouchableOpacity
         onPress={handleSubmit(onSubmit)}
-        // Am păstrat margin-top pentru a separa formularul de buton
-        className="bg-[#d1a075] py-4 rounded-xl active:scale-95 shadow-xl mt-4" 
+        disabled={isSubmitting}
+        className={`py-4 rounded-xl active:scale-95 shadow-xl mt-4 ${isSubmitting ? 'bg-gray-500' : 'bg-[#d1a075]'}`}
       >
         <Text className="text-center text-[#1b1a17] font-semibold text-lg">
-          Creează cont
+          {isSubmitting ? "Se creează..." : "Creează cont"}
         </Text>
       </TouchableOpacity>
 
