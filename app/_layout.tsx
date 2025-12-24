@@ -1,9 +1,9 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import 'react-native-reanimated';
 import "../global.css";
 import { authService } from "../services/authService";
-
 export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
