@@ -12,31 +12,46 @@ export default function RootLayout() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      // 1. Verificăm dacă avem token în storage
-      const token = await authService.getStorageItem('userToken');
-      const hasToken = !!token;
-      setIsAuthenticated(hasToken);
+      try {
+        // 1. Verificăm token-ul
+        const token = await authService.getStorageItem('userToken');
+        const hasToken = !!token;
+        setIsAuthenticated(hasToken);
 
-      // 2. Identificăm unde se află utilizatorul în aplicație
-      // segments[0] este primul folder/fișier din calea URL-ului
-      const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'welcome' || segments[0] === undefined;
+        // 2. Determinăm unde se află utilizatorul
+        // segments[0] este primul element din rută (ex: 'login', '(tabs)', etc.)
+        const currentGroup = segments[0];
 
-      if (!hasToken && !inAuthGroup) {
-        // Dacă NU e logat și încearcă să intre în aplicație -> Welcome
-        router.replace('/welcome');
-      } else if (hasToken && inAuthGroup) {
-        // Dacă ESTE logat și stă pe paginile de login -> Home
-        router.replace('/(tabs)/home');
+        // Definim rutele "publice" (unde poți sta ne-logat)
+        // Adăugăm undefined pentru cazul în care ești chiar pe index (rădăcină)
+        const inAuthGroup = 
+          currentGroup === 'login' || 
+          currentGroup === 'register' || 
+          currentGroup === 'welcome' ||
+          currentGroup === undefined; 
+
+        if (hasToken && inAuthGroup) {
+          // A. Ești LOGAT, dar încerci să vezi Login/Register -> Mergi la Home
+          // Folosim replace pentru a nu putea da "Back" la login
+          router.replace('/(tabs)/home');
+        
+        } else if (!hasToken && !inAuthGroup) {
+          // B. NU ești logat, dar încerci să accesezi pagini protejate (Home) -> Mergi la Login
+          router.replace('/login');
+        }
+        
+      } catch (error) {
+        console.error("Eroare la verificarea auth:", error);
+      } finally {
+        // Marchem că verificarea s-a terminat
+        setIsReady(true);
       }
-      
-      setIsReady(true);
     };
 
     checkAuth();
-  }, [segments]); // Se execută la fiecare schimbare de rută
+  }, [segments]); // Se re-execută la fiecare schimbare de navigare
 
-  // Afișăm un indicator de încărcare până verificăm token-ul
-  // Asta previne "flash-ul" paginii de login înainte de a fi trimis la home
+  // 3. Loading Screen - crucial pentru a evita flash-ul ecranelor greșite
   if (!isReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0f0f' }}>
@@ -47,14 +62,15 @@ export default function RootLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Definirea rutei pentru pagina animată (fostul index) */}
-      <Stack.Screen name="welcome" />
-      
-      {/* Rutele de autentificare */}
+      {/* Indexul (invizibil, face doar redirect) */}
+      <Stack.Screen name="index" /> 
+
+      {/* Rutele Publice */}
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
+      <Stack.Screen name="welcome" />
       
-      {/* Ruta protejată */}
+      {/* Rutele Protejate (Grupul tabs) */}
       <Stack.Screen name="(tabs)/home" />
     </Stack>
   );

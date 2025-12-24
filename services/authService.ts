@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const API_URL = "http://localhost:8080/api/auth"; // Pe browser folosim localhost
+const API_URL = "http://localhost:8080/api/auth";
 
 export const authService = {
   async setStorageItem(key: string, value: string) {
@@ -20,6 +20,14 @@ export const authService = {
     }
   },
 
+  async removeStorageItem(key: string) {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
+  },
+
   async login(data: any) {
     try {
       const response = await fetch(`${API_URL}/signin`, {
@@ -31,31 +39,45 @@ export const authService = {
         }),
       });
 
-      const result = await response.json();
-
-      if (response.ok && (result.token || result.accessToken)) {
-        const token = result.token || result.accessToken;
-        await this.setStorageItem('userToken', token);
-        return result;
+      const contentType = response.headers.get("content-type");
+      let result;
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        result = await response.json();
       } else {
-        throw new Error(result.message || "Credentiale incorecte");
+        result = { message: await response.text() };
       }
+
+      if (response.ok) {
+        const token = result.token || result.accessToken;
+        if (token) {
+          await this.setStorageItem('userToken', token);
+          // Salvăm obiectul utilizatorului pentru a-l afișa în profil
+          await this.setStorageItem('userData', JSON.stringify(result));
+          return result;
+        }
+      }
+      throw new Error(result.message || "Credentiale incorecte");
     } catch (error: any) {
       throw error.message || "Eroare de conexiune la server";
     }
   },
 
+  async logout() {
+    await this.removeStorageItem('userToken');
+    await this.removeStorageItem('userData');
+  },
+
   async register(data: any) {
-  const response = await fetch(`${API_URL}/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: data.username,
-      email: data.email,
-      password: data.password,
-      role: ["USER"] // Modificat în majuscule
-    }),
-  });
+    const response = await fetch(`${API_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        role: ["USER"]
+      }),
+    });
 
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "Eroare la inregistrare");
